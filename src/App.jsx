@@ -4,6 +4,7 @@ import HeaterDesignCalculator from "./components/HeaterDesignCalculator";
 import WireCalculator from "./components/WireCalculator";
 import CostingSummary from "./components/CostingSummary";
 import MaterialsAdminPanel from "./components/MaterialsAdminPanel";
+import QuoteSummary from "./components/QuoteSummary";
 
 const initialDesignInputs = {
   massFlowKgPerHr: 15065.6,
@@ -92,12 +93,18 @@ function App() {
 
       <hr style={{ margin: "2rem 0" }} />
 
-      <CostingSummary
+           <CostingSummary
+        designInputs={designInputs}
+        materialsConfig={materialsConfig}
+      />
+
+      <QuoteSummary
         designInputs={designInputs}
         materialsConfig={materialsConfig}
       />
     </div>
   );
+
 }
 
 export default App;
