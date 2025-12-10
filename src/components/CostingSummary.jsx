@@ -5,6 +5,8 @@ import { runLabourEngine } from "../engine/labour";
 import { runMaterialsEngine } from "../engine/materials";
 
 export default function CostingSummary({ designInputs, materialsConfig }) {
+  const quantity = designInputs.quantity ?? 1;
+
   // 1) Design engine from shared state
   const design = runHeaterDesign(designInputs);
 
@@ -156,10 +158,26 @@ export default function CostingSummary({ designInputs, materialsConfig }) {
           {costing.manufacturingCost.toFixed(0)}
         </li>
         <li>
-          <strong>Selling price (with margin):</strong> £
+          <strong>Selling price (per heater):</strong> £
           {costing.sellPrice.toFixed(0)}
         </li>
       </ul>
+            <h3>Project totals</h3>
+      <ul>
+        <li>
+          <strong>Quantity:</strong> {quantity} heater
+          {quantity === 1 ? "" : "s"}
+        </li>
+        <li>
+          Project manufacturing cost: £
+          {(costing.manufacturingCost * quantity).toFixed(0)}
+        </li>
+        <li>
+          Project selling price (with margin): £
+          {(costing.sellPrice * quantity).toFixed(0)}
+        </li>
+      </ul>
+
 
       {design.warnings.length > 0 && (
         <div style={{ marginTop: "1rem" }}>

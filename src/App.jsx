@@ -39,6 +39,8 @@ const initialDesignInputs = {
   paintTopcoat: "Painted",
   testingHoursOverride: 18,
   otherHoursOverride: 5,
+
+  quantity: 1, // number of identical heaters in the project
 };
 
 // central materials config in state

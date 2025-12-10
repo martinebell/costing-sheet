@@ -96,6 +96,16 @@ export default function HeaterDesignCalculator({
         </label>
 
         <label>
+          Quantity (identical heaters)
+          <input
+          type="number"
+          min="1"
+          value={designInputs.quantity}
+          onChange={handleNumberChange("quantity")}
+          />
+          </label>
+
+        <label>
           Elements per heater
           <input
             type="number"
