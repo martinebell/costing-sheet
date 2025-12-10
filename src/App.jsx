@@ -3,6 +3,7 @@ import { useState } from "react";
 import HeaterDesignCalculator from "./components/HeaterDesignCalculator";
 import WireCalculator from "./components/WireCalculator";
 import CostingSummary from "./components/CostingSummary";
+import MaterialsAdminPanel from "./components/MaterialsAdminPanel";
 
 const initialDesignInputs = {
   massFlowKgPerHr: 15065.6,
@@ -24,24 +25,44 @@ const initialDesignInputs = {
 
   tClassMaxOpTempC: 200,
   processFluidName: "Gas",
-  elementCoreType: "Core", // <-- important for labour engine
+  elementCoreType: "Core",
   certType: "Exd",
   certRegion: "ATEX",
   certHeaterKWLimit: 2000,
   hasCSAIncompatible3mmSensors: false,
 
-  weldType: "WELDED WITH STANDPIPE", // p60
-  rowsPerBank: 3,                    // k24
-  isISES: true,                      // p162
-  paintSystemA: "Painted",           // p143
-  paintSystemB: "Painted",           // p149
-  paintTopcoat: "Painted",           // p146
-  testingHoursOverride: 18,          // testingOverrideHours
-  otherHoursOverride: 5,             // otherOverrideHours
+  weldType: "WELDED WITH STANDPIPE",
+  rowsPerBank: 3,
+  isISES: true,
+  paintSystemA: "Painted",
+  paintSystemB: "Painted",
+  paintTopcoat: "Painted",
+  testingHoursOverride: 18,
+  otherHoursOverride: 5,
+};
+
+// central materials config in state
+const initialMaterialsConfig = {
+  elementUnitCost: 250,
+
+  vesselBands: [
+    { maxKW: 250, cost: 8000 },
+    { maxKW: 750, cost: 10000 },
+    { maxKW: 1500, cost: 12000 },
+    { maxKW: Infinity, cost: 15000 },
+  ],
+
+  terminalBoxes: [
+    { name: "TBX-123", cost: 3000, maxElements: 150, maxCurrentA: 100 },
+    { name: "TBX-200", cost: 4000, maxElements: 200, maxCurrentA: 160 },
+  ],
+
+  miscFixedCost: 2000,
 };
 
 function App() {
   const [designInputs, setDesignInputs] = useState(initialDesignInputs);
+  const [materialsConfig, setMaterialsConfig] = useState(initialMaterialsConfig);
 
   const handleDesignChange = (updated) => {
     setDesignInputs(updated);
@@ -62,7 +83,17 @@ function App() {
 
       <hr style={{ margin: "2rem 0" }} />
 
-      <CostingSummary designInputs={designInputs} />
+      <MaterialsAdminPanel
+        materialsConfig={materialsConfig}
+        onChange={setMaterialsConfig}
+      />
+
+      <hr style={{ margin: "2rem 0" }} />
+
+      <CostingSummary
+        designInputs={designInputs}
+        materialsConfig={materialsConfig}
+      />
     </div>
   );
 }

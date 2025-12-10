@@ -1,14 +1,14 @@
 // src/components/CostingSummary.jsx
-import { useMemo } from "react";
 import { runCosting } from "../engine/costing";
 import { runHeaterDesign } from "../engine/heaterDesign";
 import { runLabourEngine } from "../engine/labour";
+import { runMaterialsEngine } from "../engine/materials";
 
-export default function CostingSummary({ designInputs }) {
-  // Design engine from shared state
+export default function CostingSummary({ designInputs, materialsConfig }) {
+  // 1) Design engine from shared state
   const design = runHeaterDesign(designInputs);
 
-  // Labour engine inputs – now partly driven from designInputs
+  // 2) Labour engine inputs – driven from designInputs
   const labourInputs = {
     // Design-related fields
     p5: designInputs.elementCoreType,
@@ -58,45 +58,40 @@ export default function CostingSummary({ designInputs }) {
     otherOverrideHours: designInputs.otherHoursOverride,
   };
 
-
   const labourEngineResult = runLabourEngine(labourInputs);
 
-  const costing = useMemo(
-    () =>
-      runCosting({
-        design,
-        elementsPerHeater: designInputs.elementsPerHeater,
-        elementUnitCost: 250, // placeholder
-        vesselCost: 12000,
-        terminalBoxCost: 3000,
-        miscMaterialCost: 2000,
-        labour: {
-          machiningHours: labourEngineResult.machiningHours,
-          elementHours: labourEngineResult.elementHours,
-          weldingHours: labourEngineResult.weldingHours,
-          finalAssemblyHours: labourEngineResult.finalAssemblyHours,
-          paintHours: labourEngineResult.paintHours,
-          wiringHours: labourEngineResult.wiringHours,
-          testingHours: labourEngineResult.testingHours,
-          otherHours: labourEngineResult.otherHours,
-        },
-        labourRatePerHour: 45,
-        overheadFactor: 1.25,
-        marginPercent: 20,
-      }),
-    [
-      design,
-      designInputs.elementsPerHeater,
-      labourEngineResult.machiningHours,
-      labourEngineResult.elementHours,
-      labourEngineResult.weldingHours,
-      labourEngineResult.finalAssemblyHours,
-      labourEngineResult.paintHours,
-      labourEngineResult.wiringHours,
-      labourEngineResult.testingHours,
-      labourEngineResult.otherHours,
-    ]
-  );
+  // 3) Materials engine – element/vessel/TB/misc
+  const materials = runMaterialsEngine({
+    design,
+    designInputs: {
+      elementsPerHeater: designInputs.elementsPerHeater,
+      terminalBoxName: designInputs.terminalBoxName,
+    },
+    config: materialsConfig,
+  });
+
+  // 4) Costing engine – uses design + labour + materials
+  const costing = runCosting({
+    design,
+    elementsPerHeater: materials.elementCount,
+    elementUnitCost: materials.elementUnitCost,
+    vesselCost: materials.vesselCost,
+    terminalBoxCost: materials.terminalBoxCost,
+    miscMaterialCost: materials.miscMaterialCost,
+    labour: {
+      machiningHours: labourEngineResult.machiningHours,
+      elementHours: labourEngineResult.elementHours,
+      weldingHours: labourEngineResult.weldingHours,
+      finalAssemblyHours: labourEngineResult.finalAssemblyHours,
+      paintHours: labourEngineResult.paintHours,
+      wiringHours: labourEngineResult.wiringHours,
+      testingHours: labourEngineResult.testingHours,
+      otherHours: labourEngineResult.otherHours,
+    },
+    labourRatePerHour: 45,
+    overheadFactor: 1.25,
+    marginPercent: 20,
+  });
 
   return (
     <div style={{ marginTop: "2rem", maxWidth: 700 }}>
@@ -107,7 +102,8 @@ export default function CostingSummary({ designInputs }) {
         {design.dutyKW !== null
           ? `${design.dutyKW.toFixed(1)} kW duty vs ${
               design.loadPerElementKW !== null
-                ? (design.loadPerElementKW *
+                ? (
+                    design.loadPerElementKW *
                     designInputs.elementsPerHeater
                   ).toFixed(1)
                 : "?"
