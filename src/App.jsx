@@ -41,10 +41,9 @@ const initialDesignInputs = {
   testingHoursOverride: 18,
   otherHoursOverride: 5,
 
-  quantity: 1, // number of identical heaters in the project
+  quantity: 1,
 };
 
-// central materials config in state
 const initialMaterialsConfig = {
   elementUnitCost: 250,
 
@@ -67,44 +66,108 @@ function App() {
   const [designInputs, setDesignInputs] = useState(initialDesignInputs);
   const [materialsConfig, setMaterialsConfig] = useState(initialMaterialsConfig);
 
+  // NEW TABS: inputs | wire | materials | costing | summary
+  const [view, setView] = useState("inputs");
+
   const handleDesignChange = (updated) => {
     setDesignInputs(updated);
   };
 
+  const tabButtonStyle = (tab) => ({
+    padding: "0.5rem 1rem",
+    borderRadius: "999px",
+    border: "1px solid #ccc",
+    backgroundColor: view === tab ? "#333" : "#f5f5f5",
+    color: view === tab ? "#fff" : "#333",
+    cursor: "pointer",
+    fontSize: "0.9rem",
+  });
+
   return (
-    <div style={{ padding: "1rem", fontFamily: "system-ui" }}>
-      <h1>EXHEAT Costing Sheet</h1>
+    <div style={{ padding: "1.5rem", fontFamily: "system-ui", maxWidth: 1100, margin: "0 auto" }}>
+      <header style={{ marginBottom: "1.5rem" }}>
+        <h1 style={{ marginBottom: "0.25rem" }}>EXHEAT Costing Sheet</h1>
+        <p style={{ margin: 0, fontSize: "0.9rem", color: "#555" }}>
+          Prototype design, labour, materials and quotation engine
+        </p>
+      </header>
 
-      <HeaterDesignCalculator
-        designInputs={designInputs}
-        onDesignChange={handleDesignChange}
-      />
+      {/* Tabs */}
+      <nav
+        style={{
+          display: "flex",
+          gap: "0.5rem",
+          marginBottom: "1.5rem",
+          borderBottom: "1px solid #e0e0e0",
+          paddingBottom: "0.75rem",
+        }}
+      >
+        <button style={tabButtonStyle("inputs")} onClick={() => setView("inputs")}>
+          Inputs
+        </button>
 
-      <hr style={{ margin: "2rem 0" }} />
+        <button style={tabButtonStyle("wire")} onClick={() => setView("wire")}>
+          Wire Calc
+        </button>
 
-      <WireCalculator />
+        <button style={tabButtonStyle("materials")} onClick={() => setView("materials")}>
+          Material Config
+        </button>
 
-      <hr style={{ margin: "2rem 0" }} />
+        <button style={tabButtonStyle("costing")} onClick={() => setView("costing")}>
+          Costing
+        </button>
 
-      <MaterialsAdminPanel
-        materialsConfig={materialsConfig}
-        onChange={setMaterialsConfig}
-      />
+        <button style={tabButtonStyle("summary")} onClick={() => setView("summary")}>
+          Summary
+        </button>
+      </nav>
 
-      <hr style={{ margin: "2rem 0" }} />
+      {/* Views */}
 
-           <CostingSummary
-        designInputs={designInputs}
-        materialsConfig={materialsConfig}
-      />
+      {view === "inputs" && (
+        <>
+          <HeaterDesignCalculator
+            designInputs={designInputs}
+            onDesignChange={handleDesignChange}
+          />
+        </>
+      )}
 
-      <QuoteSummary
-        designInputs={designInputs}
-        materialsConfig={materialsConfig}
-      />
+      {view === "wire" && (
+        <>
+          <WireCalculator />
+        </>
+      )}
+
+      {view === "materials" && (
+        <>
+          <MaterialsAdminPanel
+            materialsConfig={materialsConfig}
+            onChange={setMaterialsConfig}
+          />
+        </>
+      )}
+
+      {view === "costing" && (
+        <>
+          <CostingSummary
+            designInputs={designInputs}
+            materialsConfig={materialsConfig}
+          />
+        </>
+      )}
+
+      {view === "summary" && (
+        <>
+          <QuoteSummary
+            designInputs={designInputs}
+            materialsConfig={materialsConfig}
+          />
+        </>
+      )}
     </div>
   );
-
 }
 
 export default App;
