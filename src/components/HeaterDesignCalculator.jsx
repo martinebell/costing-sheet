@@ -1,121 +1,105 @@
 // src/components/HeaterDesignCalculator.jsx
-import { useState } from "react";
 import { runHeaterDesign } from "../engine/heaterDesign";
 
-export default function HeaterDesignCalculator() {
-  const [inputs, setInputs] = useState({
-    // --- process / thermal ---
-    massFlowKgPerHr: 15065.6,
-    cp_kJ_per_kgK: 1.7188,
-    t1C: 40,
-    t2C: 370,
-
-    // --- electrical / rating ---
-    heaterRatingKW: 1470,
-    elementsPerHeater: 150,
-    numStages: 10,
-
-    // --- supply / connection ---
-    supplyVoltageV: 400,
-    supplyConfig: "STAR", // "STAR" | "DELTA" | "SINGLE_PHASE" | "OTHER"
-    parallelFactor: 2,
-
-    // --- catalogue limits (just demo values for now) ---
-    maxPinCurrentA: 80,
-    terminalBoxMaxElements: 150,
-    terminalBoxMaxCurrentA: 100,
-    terminalBoxName: "TBX-123",
-
-    // --- T-class / certification ---
-    tClassMaxOpTempC: 200,
-    processFluidName: "Gas",
-    elementCoreType: "Core",
-    certType: "Exd",
-    certRegion: "ATEX",
-    certHeaterKWLimit: 2000,
-    hasCSAIncompatible3mmSensors: false,
-  });
-
-  const design = runHeaterDesign(inputs);
-
+export default function HeaterDesignCalculator({
+  designInputs,
+  onDesignChange,
+}) {
   const handleNumberChange = (field) => (e) => {
-    const raw = e.target.value;
-    setInputs((prev) => ({
-      ...prev,
-      [field]: raw === "" ? null : Number(raw),
-    }));
+    const value = e.target.value;
+    onDesignChange({
+      ...designInputs,
+      [field]: value === "" ? "" : Number(value),
+    });
+  };
+
+  const handleTextChange = (field) => (e) => {
+    onDesignChange({
+      ...designInputs,
+      [field]: e.target.value,
+    });
   };
 
   const handleSelectChange = (field) => (e) => {
-    setInputs((prev) => ({
-      ...prev,
+    onDesignChange({
+      ...designInputs,
       [field]: e.target.value,
-    }));
+    });
   };
 
-  return (
-    <div style={{ marginTop: "1.5rem", maxWidth: 800 }}>
-      <h2>Heater Design Calculator (Sheet B Engine)</h2>
+  const handleCheckboxChange = (field) => (e) => {
+  onDesignChange({
+    ...designInputs,
+    [field]: e.target.checked,
+  });
+};
 
-      {/* --- Inputs --- */}
+  const design = runHeaterDesign(designInputs);
+
+  return (
+    <div style={{ maxWidth: 800 }}>
+      <h2>Heater Design Inputs</h2>
+
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-          gap: "0.75rem",
-          marginTop: "0.75rem",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: "0.75rem 1.5rem",
         }}
       >
+        {/* Process side */}
         <label>
-          Mass flow (kg/hr)
+          Mass flow (kg/h)
           <input
             type="number"
-            value={inputs.massFlowKgPerHr ?? ""}
+            value={designInputs.massFlowKgPerHr}
             onChange={handleNumberChange("massFlowKgPerHr")}
           />
         </label>
 
         <label>
-          Cp (kJ/kg·°C)
+          Cp (kJ/kg·K)
           <input
             type="number"
-            value={inputs.cp_kJ_per_kgK ?? ""}
+            step="0.0001"
+            value={designInputs.cp_kJ_per_kgK}
             onChange={handleNumberChange("cp_kJ_per_kgK")}
           />
         </label>
 
         <label>
-          T1 (°C)
+          Inlet temp (°C)
           <input
             type="number"
-            value={inputs.t1C ?? ""}
+            value={designInputs.t1C}
             onChange={handleNumberChange("t1C")}
           />
         </label>
 
         <label>
-          T2 (°C)
+          Outlet temp (°C)
           <input
             type="number"
-            value={inputs.t2C ?? ""}
+            value={designInputs.t2C}
             onChange={handleNumberChange("t2C")}
           />
         </label>
 
+        {/* Electrical / element data */}
         <label>
           Heater rating (kW)
           <input
             type="number"
-            value={inputs.heaterRatingKW ?? ""}
+            value={designInputs.heaterRatingKW}
             onChange={handleNumberChange("heaterRatingKW")}
           />
         </label>
 
         <label>
-          Elements / heater
+          Elements per heater
           <input
             type="number"
-            value={inputs.elementsPerHeater ?? ""}
+            value={designInputs.elementsPerHeater}
             onChange={handleNumberChange("elementsPerHeater")}
           />
         </label>
@@ -124,7 +108,7 @@ export default function HeaterDesignCalculator() {
           Number of stages
           <input
             type="number"
-            value={inputs.numStages ?? ""}
+            value={designInputs.numStages}
             onChange={handleNumberChange("numStages")}
           />
         </label>
@@ -133,7 +117,7 @@ export default function HeaterDesignCalculator() {
           Supply voltage (V)
           <input
             type="number"
-            value={inputs.supplyVoltageV ?? ""}
+            value={designInputs.supplyVoltageV}
             onChange={handleNumberChange("supplyVoltageV")}
           />
         </label>
@@ -141,70 +125,151 @@ export default function HeaterDesignCalculator() {
         <label>
           Supply config
           <select
-            value={inputs.supplyConfig}
+            value={designInputs.supplyConfig}
             onChange={handleSelectChange("supplyConfig")}
           >
             <option value="STAR">STAR</option>
             <option value="DELTA">DELTA</option>
-            <option value="SINGLE_PHASE">SINGLE_PHASE</option>
-            <option value="OTHER">OTHER</option>
           </select>
         </label>
+
+        {/* Core type drives labour */}
+        <label>
+          Element core type
+          <select
+            value={designInputs.elementCoreType}
+            onChange={handleSelectChange("elementCoreType")}
+          >
+            <option value="Core">Core</option>
+            <option value="Hairpin">Hairpin</option>
+            <option value="Cartridge">Cartridge</option>
+          </select>
+        </label>
+
+        {/* Simple free text if you want later mapping */}
+        <label>
+          Process fluid
+          <input
+            type="text"
+            value={designInputs.processFluidName}
+            onChange={handleTextChange("processFluidName")}
+          />
+        </label>
+
+                {/* Labour-related config */}
+        <label>
+          Weld type
+          <select
+            value={designInputs.weldType}
+            onChange={handleSelectChange("weldType")}
+          >
+            <option value="WELDED WITH STANDPIPE">
+              WELDED WITH STANDPIPE
+            </option>
+            <option value="WELDED WITH FILLER RINGS">
+              WELDED WITH FILLER RINGS
+            </option>
+            <option value="FLANGED">FLANGED (no nozzle weld)</option>
+          </select>
+        </label>
+
+        <label>
+          Rows / banks (k24)
+          <input
+            type="number"
+            value={designInputs.rowsPerBank}
+            onChange={handleNumberChange("rowsPerBank")}
+          />
+        </label>
+
+        <label>
+          ISES control system?
+          <input
+            type="checkbox"
+            checked={designInputs.isISES}
+            onChange={handleCheckboxChange("isISES")}
+            style={{ marginLeft: "0.5rem" }}
+          />
+        </label>
+
+        <label>
+          Paint system A
+          <select
+            value={designInputs.paintSystemA}
+            onChange={handleSelectChange("paintSystemA")}
+          >
+            <option value="Painted">Painted</option>
+            <option value="No Painting Required">No Painting Required</option>
+          </select>
+        </label>
+
+        <label>
+          Paint system B
+          <select
+            value={designInputs.paintSystemB}
+            onChange={handleSelectChange("paintSystemB")}
+          >
+            <option value="Painted">Painted</option>
+            <option value="No Painting Required">No Painting Required</option>
+          </select>
+        </label>
+
+        <label>
+          Topcoat / extra paint
+          <select
+            value={designInputs.paintTopcoat}
+            onChange={handleSelectChange("paintTopcoat")}
+          >
+            <option value="Painted">Painted</option>
+            <option value="No Painting Required">No Painting Required</option>
+          </select>
+        </label>
+
+        <label>
+          Testing hours override
+          <input
+            type="number"
+            value={designInputs.testingHoursOverride}
+            onChange={handleNumberChange("testingHoursOverride")}
+          />
+        </label>
+
+        <label>
+          Other hours override
+          <input
+            type="number"
+            value={designInputs.otherHoursOverride}
+            onChange={handleNumberChange("otherHoursOverride")}
+          />
+        </label>
+
       </div>
 
-      {/* --- Outputs --- */}
-      <div style={{ marginTop: "1.5rem" }}>
-        <h3>Results</h3>
-        <p>{design.n1Label}</p>
-        <p>{design.n2Label}</p>
-
-        <p>
-          <strong>Calculated duty:</strong>{" "}
-          {design.dutyKW !== null ? design.dutyKW.toFixed(2) + " kW" : "—"}
-        </p>
-
-        <p>
-          <strong>Load / element:</strong>{" "}
-          {design.loadPerElementKW !== null
-            ? design.loadPerElementKW.toFixed(3) + " kW"
+      <h3 style={{ marginTop: "1.5rem" }}>Design summary</h3>
+      <ul>
+        <li>
+          Duty:{" "}
+          {design.dutyKW !== null
+            ? `${design.dutyKW.toFixed(1)} kW`
             : "—"}
-        </p>
-
-        <p>
-          <strong>Pin current:</strong>{" "}
-          {design.pinCurrentA !== null
-            ? design.pinCurrentA.toFixed(2) + " A"
-            : "—"}{" "}
-          ({design.pinCurrentMessage})
-        </p>
-
-        <p>
-          <strong>Element count:</strong> {design.elementCountMessage}
-        </p>
-
-        <p>
-          <strong>Terminal box:</strong> {design.terminalBoxStatus}
-        </p>
-
-        <p>
-          <strong>T-Class:</strong> {design.tClassStatus}
-        </p>
-
-        <p>
-          <strong>Certification:</strong> {design.certStatus}
-        </p>
-
+        </li>
+        <li>
+          Installed load per element:{" "}
+          {design.loadPerElementKW !== null
+            ? `${design.loadPerElementKW.toFixed(3)} kW/element`
+            : "—"}
+        </li>
         {design.warnings.length > 0 && (
-          <div style={{ marginTop: "0.75rem" }}>
+          <li>
             <strong>Warnings:</strong>
             <ul>
-              {design.warnings.map((w, idx) => (
-                <li key={idx}>{w}</li>
+              {design.warnings.map((w, i) => (
+                <li key={i}>{w}</li>
               ))}
             </ul>
-          </div>
+          </li>
         )}
-      </div>
+      </ul>
     </div>
   );
 }
