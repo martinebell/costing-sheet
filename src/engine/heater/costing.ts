@@ -1,5 +1,5 @@
 // src/engine/costing.ts
-import type { HeaterDesignOutputs } from "./heaterDesign";
+import type { HeaterDesignOutputs } from "./heater/heaterDesign";
 
 export interface LabourCategoryHours {
   // Mirrors Labour Calc category totals:

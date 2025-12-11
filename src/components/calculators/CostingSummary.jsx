@@ -1,14 +1,108 @@
 // src/components/CostingSummary.jsx
-import { runCosting } from "../engine/costing";
-import { runHeaterDesign } from "../engine/heaterDesign";
-import { runLabourEngine } from "../engine/labour";
-import { runMaterialsEngine } from "../engine/materials";
+import { runCosting } from "../../engine/costing";
+import { runHeaterDesign } from "../../engine/heater/heaterDesign";
+import { runLabourEngine } from "../../engine/heater/labour";
+import { runMaterialsEngine } from "../../engine/heater/materials";
+import { runElementSelection } from "../../engine/heater/elementSelection";
 
 export default function CostingSummary({ designInputs, materialsConfig }) {
   const quantity = designInputs.quantity ?? 1;
 
-  // 1) Design engine from shared state
-  const design = runHeaterDesign(designInputs);
+  // 1) Map UI designInputs -> engine HeaterDesignInputs shape
+  const heaterDesignInputsForEngine = {
+    // Power/loads
+    duty_kW: designInputs.heaterRatingKW ?? 0,
+    installed_kW: designInputs.heaterRatingKW ?? 0, // for now same as duty
+
+    // Basic heater config
+    heaterType: "Immersion", // placeholder until you add a field
+    supplyConfig:
+      designInputs.supplyConfig === "STAR"
+        ? "Star"
+        : designInputs.supplyConfig === "DELTA"
+        ? "Delta"
+        : designInputs.supplyConfig,
+    frequencyHz: 50, // assume 50 Hz for now
+
+    numHeaters: 1,
+    elementsPerHeater: designInputs.elementsPerHeater ?? 0,
+    numStages: designInputs.numStages ?? 1,
+
+    operatingVoltage: designInputs.supplyVoltageV ?? 400,
+
+    // Thermal / T-class mapping
+    bulkOperatingTemp_C:
+      designInputs.bulkOperatingTemp_C ??
+      designInputs.t2C ??
+      0,
+    tClassLimit_C:
+      designInputs.tClassLimit_C ??
+      designInputs.tClassMaxOpTempC ??
+      undefined,
+    sheathTempOverride_C: designInputs.sheathTempOverride_C,
+  };
+
+  // Run the design engine
+  const designResult = runHeaterDesign(heaterDesignInputsForEngine);
+  const rawDesign = designResult && designResult.design ? designResult.design : null;
+  const designWarnings = (designResult && designResult.warnings) || [];
+
+  // Normalise naming so old code expecting dutyKW / loadPerElementKW still works
+  const design = rawDesign
+    ? {
+        ...rawDesign,
+        dutyKW:
+          rawDesign.dutyKW !== undefined
+            ? rawDesign.dutyKW
+            : rawDesign.duty_kW,
+        loadPerElementKW:
+          rawDesign.loadPerElementKW !== undefined
+            ? rawDesign.loadPerElementKW
+            : rawDesign.loadPerElement_kW,
+      }
+    : null;
+
+  const dutyKW =
+    design && typeof design.dutyKW === "number" ? design.dutyKW : null;
+
+  const installedKW =
+    design && typeof design.installed_kW === "number"
+      ? design.installed_kW
+      : dutyKW !== null &&
+        designInputs.elementsPerHeater &&
+        design &&
+        typeof design.loadPerElementKW === "number"
+      ? design.loadPerElementKW * designInputs.elementsPerHeater
+      : null;
+
+  const bulkTemp =
+    design && typeof design.bulkOperatingTemp_C === "number"
+      ? design.bulkOperatingTemp_C
+      : null;
+
+  const sheathTemp =
+    design && typeof design.sheathTemp_C === "number"
+      ? design.sheathTemp_C
+      : null;
+
+  const tClassLimit =
+    design && typeof design.tClassLimit_C === "number"
+      ? design.tClassLimit_C
+      : null;
+
+ // 1b) Element selection engine
+  const elementSelection = design
+    ? runElementSelection({
+        design,
+        // Map UI fields into element selection inputs
+        requiredInactiveLength_mm: designInputs.requiredInactiveLengthMM,
+        processFluidName: designInputs.processFluidName,
+      })
+    : { element: null, targetElement_kW: 0, options: [], warnings: [] };
+
+
+  const element = elementSelection.element;
+  const elementWarnings = elementSelection.warnings || [];
 
   // 2) Labour engine inputs – driven from designInputs
   const labourInputs = {
@@ -101,17 +195,39 @@ export default function CostingSummary({ designInputs, materialsConfig }) {
 
       <p>
         <strong>Heater rating:</strong>{" "}
-        {design.dutyKW !== null
-          ? `${design.dutyKW.toFixed(1)} kW duty vs ${
-              design.loadPerElementKW !== null
-                ? (
-                    design.loadPerElementKW *
-                    designInputs.elementsPerHeater
-                  ).toFixed(1)
-                : "?"
-            } kW installed`
+        {dutyKW !== null && installedKW !== null
+          ? `${dutyKW.toFixed(1)} kW duty vs ${installedKW.toFixed(
+              1
+            )} kW installed`
           : "—"}
       </p>
+
+      {bulkTemp !== null && tClassLimit !== null && (
+        <p>
+          <strong>Process / T-class:</strong>{" "}
+          {bulkTemp.toFixed(1)} °C bulk vs{" "}
+          {tClassLimit.toFixed(1)} °C limit
+        </p>
+      )}
+
+      {sheathTemp !== null && (
+        <p>
+          <strong>Estimated sheath temp:</strong>{" "}
+          {sheathTemp.toFixed(1)} °C
+        </p>
+      )}
+
+            {element && (
+        <p>
+          <strong>Selected element:</strong>{" "}
+          {element.description} (rated {element.rated_kW.toFixed(1)} kW at{" "}
+          {element.nominalVoltage_V} V) – target{" "}
+          {elementSelection.targetElement_kW.toFixed(2)} kW/element, approx{" "}
+          {element.wattDensityAtTargetLoad_kW_per_m2.toFixed(1)} kW/m²
+          { element.inactiveLength_mm.toFixed(0)} mm
+        </p>
+      )}
+
 
       <h3>Materials</h3>
       <ul>
@@ -162,7 +278,8 @@ export default function CostingSummary({ designInputs, materialsConfig }) {
           {costing.sellPrice.toFixed(0)}
         </li>
       </ul>
-            <h3>Project totals</h3>
+
+      <h3>Project totals</h3>
       <ul>
         <li>
           <strong>Quantity:</strong> {quantity} heater
@@ -178,13 +295,21 @@ export default function CostingSummary({ designInputs, materialsConfig }) {
         </li>
       </ul>
 
-
-      {design.warnings.length > 0 && (
+      {(designWarnings.length > 0 || elementWarnings.length > 0) && (
         <div style={{ marginTop: "1rem" }}>
           <strong>Design warnings affecting costing:</strong>
           <ul>
-            {design.warnings.map((w, i) => (
-              <li key={i}>{w}</li>
+            {designWarnings.map((w, i) => (
+              <li key={`d-${i}`}>
+                {w.code ? `[${w.code}] ` : ""}
+                {w.message ?? String(w)}
+              </li>
+            ))}
+            {elementWarnings.map((w, i) => (
+              <li key={`e-${i}`}>
+                {w.code ? `[${w.code}] ` : ""}
+                {w.message ?? String(w)}
+              </li>
             ))}
           </ul>
         </div>

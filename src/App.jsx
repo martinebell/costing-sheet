@@ -2,7 +2,7 @@
 import { useState } from "react";
 import HeaterDesignCalculator from "./components/HeaterDesignCalculator";
 import WireCalculator from "./components/WireCalculator";
-import CostingSummary from "./components/CostingSummary";
+import CostingSummary from "./components/calculators/CostingSummary";
 import MaterialsAdminPanel from "./components/MaterialsAdminPanel";
 import QuoteSummary from "./components/QuoteSummary";
 
@@ -42,6 +42,16 @@ const initialDesignInputs = {
   otherHoursOverride: 5,
 
   quantity: 1,
+
+   //T-class fields used by runHeaterDesign
+  bulkOperatingTemp_C: 370,      // use outlet temp as starting point
+  tClassLimit_C: 200,            // mirror tClassMaxOpTempC for now
+  sheathTempOverride_C: undefined, // or null – let engine estimate for now
+
+  // NEW: basic placeholder for required inactive length (mm)
+  // Later this will come from vessel / standpipe / TB geometry.
+  requiredInactiveLengthMM: 520,
+
 };
 
 const initialMaterialsConfig = {

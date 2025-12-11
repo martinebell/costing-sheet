@@ -1,4 +1,41 @@
-// src/data/wireCalc.js
+// src/engine/wireCalc.ts
+
+// --- Types -------------------------------------------------------
+
+export type CableMaterial = "copper" | "aluminium";
+
+export type CableRow = {
+  sizeLabel: string;
+  areaMm2: number;
+  resistanceOhmPerKm: number;
+  currentRatingA: number;
+};
+
+export type WireCalcInput = {
+  currentA: number;
+  lengthM: number;
+  supplyV: number;
+  maxVoltDropPct: number;
+  material?: CableMaterial | string; // we normalise anyway
+  threePhase?: boolean;
+};
+
+export type WireCalcOption = CableRow & {
+  rPerM: number;
+  rTotal: number;
+  vDrop: number;
+  vDropPct: number;
+  withinCurrent: boolean;
+  withinDrop: boolean;
+  compliant: boolean;
+};
+
+export type WireCalcResult = {
+  ok: boolean;
+  message: string;
+  recommended: WireCalcOption | null;
+  options: WireCalcOption[];
+};
 
 // --- Cable data -------------------------------------------------------
 // These values are *illustrative approximations* – you can later replace
@@ -7,7 +44,7 @@
 // Resistance is Ω/km at 20°C. Current rating is a rough continuous rating
 // for PVC-insulated copper in free air.
 
-const copperTable = [
+const copperTable: CableRow[] = [
   { sizeLabel: "1.5 mm²", areaMm2: 1.5,  resistanceOhmPerKm: 12.1, currentRatingA: 16 },
   { sizeLabel: "2.5 mm²", areaMm2: 2.5,  resistanceOhmPerKm: 7.41, currentRatingA: 21 },
   { sizeLabel: "4.0 mm²", areaMm2: 4.0,  resistanceOhmPerKm: 4.61, currentRatingA: 28 },
@@ -18,7 +55,7 @@ const copperTable = [
   { sizeLabel: "35 mm²", areaMm2: 35.0, resistanceOhmPerKm: 0.524, currentRatingA: 109 },
 ];
 
-const aluminiumTable = [
+const aluminiumTable: CableRow[] = [
   // Rough values – swap for your own if you actually use aluminium.
   { sizeLabel: "10 mm²", areaMm2: 10.0, resistanceOhmPerKm: 3.08, currentRatingA: 40 },
   { sizeLabel: "16 mm²", areaMm2: 16.0, resistanceOhmPerKm: 1.91, currentRatingA: 55 },
@@ -27,8 +64,8 @@ const aluminiumTable = [
   { sizeLabel: "50 mm²", areaMm2: 50.0, resistanceOhmPerKm: 0.641, currentRatingA: 115 },
 ];
 
-function getTable(material) {
-  return material === "aluminium" ? aluminiumTable : copperTable;
+function getTable(material: string | undefined): CableRow[] {
+  return material?.toLowerCase() === "aluminium" ? aluminiumTable : copperTable;
 }
 
 /**
@@ -42,14 +79,16 @@ function getTable(material) {
  *  material       "copper" | "aluminium"
  *  threePhase     true for 3φ, false for 1φ
  */
-export function calculateWireSize({
-  currentA,
-  lengthM,
-  supplyV,
-  maxVoltDropPct,
-  material = "copper",
-  threePhase = false,
-}) {
+export default function calculateWireSize(
+  {
+    currentA,
+    lengthM,
+    supplyV,
+    maxVoltDropPct,
+    material = "copper",
+    threePhase = false,
+  }: WireCalcInput
+): WireCalcResult {
   if (!currentA || !lengthM || !supplyV || !maxVoltDropPct) {
     return {
       ok: false,
@@ -59,9 +98,9 @@ export function calculateWireSize({
     };
   }
 
-  const table = getTable(material.toLowerCase());
+  const table = getTable(material);
 
-  const results = table.map((item) => {
+  const results: WireCalcOption[] = table.map((item) => {
     const rPerM = item.resistanceOhmPerKm / 1000; // Ω/m
 
     // 1φ: there and back (2×L). 3φ: ≈ √3 × L (line-to-line, simplified).
@@ -87,14 +126,16 @@ export function calculateWireSize({
   });
 
   const compliantOptions = results.filter((r) => r.compliant);
-  let recommended;
-  let message;
+  let recommended: WireCalcOption | null;
+  let message: string;
 
   if (compliantOptions.length > 0) {
-    recommended = compliantOptions.sort((a, b) => a.areaMm2 - b.areaMm2)[0];
+    recommended = [...compliantOptions].sort(
+      (a, b) => a.areaMm2 - b.areaMm2
+    )[0];
     message = "Smallest cable that meets current and voltage drop limits.";
   } else {
-    recommended = results[results.length - 1];
+    recommended = results[results.length - 1] ?? null;
     message =
       "No size in the table meets both limits. Largest size shown – review design.";
   }

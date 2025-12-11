@@ -1,5 +1,5 @@
 // src/engine/materialsConfig.ts
-import type { MaterialsConfig } from "./materials";
+import type { MaterialsConfig } from "./heater/materials";
 
 // Central place for all materials pricing.
 //Replace these placeholder numbers with EXHEAT values.
